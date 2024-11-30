@@ -18,6 +18,7 @@ using Serilog;
 using Domain.ViewModels.Product;
 using DataAccess.Commons;
 using DataAccess.Interfaces;
+using DataAccess.Utils;
 
 namespace JWTDemo.Controllers.v5
 {
@@ -51,15 +52,78 @@ namespace JWTDemo.Controllers.v5
         [MapToApiVersion(5)]
         [HttpGet]
         [Produces("application/json")]
-        public async Task<ActionResult<Pagination<ProductDTO>>> GetProducts(int pageIndex = 0, int pageSize = 20)
+        public async Task<ActionResult<Pagination<ProductDTO>>> GetProducts([FromQuery] FilterProductModel filterProductModel, int pageIndex = 0, int pageSize = 20)
+        {
+            //add includes
+            List<Expression<Func<Product, object>>> includes = new List<Expression<Func<Product, object>>>{
+                                 x => x.Category,
+                                    };
+
+            //add filters
+            var filter = new List<Expression<Func<Product, bool>>>();
+            filter.Add(x => !x.IsDeleted);
+            //add keyword filter
+            if (filterProductModel.Keyword != null) {
+                string keywordLower = filterProductModel.Keyword.ToLower();
+                filter.Add(x => x.Name.ToLower().Contains(keywordLower));
+            }
+
+            //add category filter
+            try
+            {
+                if (filterProductModel.CategoryId != null && filterProductModel.CategoryId != "")
+                {
+                    filter.Add(x => x.CategoryId == Guid.Parse(filterProductModel.CategoryId));
+                }
+            }
+            catch (Exception)
+            {
+               return BadRequest("Category Not found!");
+            }
+
+            //add price range filter
+            if (filterProductModel.MinPrice != null)
+            {
+                filter.Add(x => x.Price >= filterProductModel.MinPrice);
+            }
+            if (filterProductModel.MaxPrice != null)
+            {
+                filter.Add(x => x.Price <= filterProductModel.MaxPrice);
+            }
+
+            var finalFilter = filter.Aggregate((current, next) => current.AndAlso(next));
+
+            var products = await _unitOfWork.ProductRepository.GetAsyncPagination(includes: includes, pageIndex: pageIndex, pageSize: pageSize, expression: finalFilter);
+            var productDTOs = _mapper.Map<Pagination<ProductDTO>>(products);
+            Log.Information("Result: {@productDTOs}", productDTOs);
+            return Ok(productDTOs);
+        }
+
+        // GET: api/Products/5
+        /// <summary>
+        /// Get a specific Product
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns>A specific ProductDTO</returns>
+        [MapToApiVersion(5)]
+        [HttpGet("Customer/{id}")]
+        [Produces("application/json")]
+        public ActionResult<ProductDTO> GetProductCustomer(Guid id)
         {
             List<Expression<Func<Product, object>>> includes = new List<Expression<Func<Product, object>>>{
                                  x => x.Category,
                                     };
-            var products = await _unitOfWork.ProductRepository.GetAsyncPagination(includes: includes, pageIndex: pageIndex, pageSize: pageSize);
-            var productDTOs = _mapper.Map<Pagination<ProductDTO>>(products);
-            Log.Information("Result: {@productDTOs}", productDTOs);
-            return Ok(productDTOs);
+            var product = _unitOfWork.ProductRepository
+                .GetAsync(expression: x => x.Id == id, includes: includes).Result.FirstOrDefault();
+
+            if (product == null)
+            {
+                Log.Information("Not found Product.");
+                return NotFound("Not found Product.");
+            }
+            var productDTO = _mapper.Map<ProductDTO>(product);
+            Log.Information("Result: {@productDTO}", productDTO);
+            return Ok(productDTO);
         }
 
         // GET: api/Products/5

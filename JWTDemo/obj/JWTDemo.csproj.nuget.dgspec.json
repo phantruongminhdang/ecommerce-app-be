@@ -49,6 +49,12 @@
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
+          "dependencies": {
+            "SqlTableDependency": {
+              "target": "Package",
+              "version": "[8.5.8, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

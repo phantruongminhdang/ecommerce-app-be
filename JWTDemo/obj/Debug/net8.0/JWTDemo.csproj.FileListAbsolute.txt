@@ -556,3 +556,4 @@ C:\Users\minhd\OneDrive\Desktop\Ecommerce-App\JWTDemo\JWTDemo\obj\Debug\net8.0\J
 C:\Users\minhd\OneDrive\Desktop\Ecommerce-App\JWTDemo\JWTDemo\obj\Debug\net8.0\JWTDemo.pdb
 C:\Users\minhd\OneDrive\Desktop\Ecommerce-App\JWTDemo\JWTDemo\obj\Debug\net8.0\JWTDemo.genruntimeconfig.cache
 C:\Users\minhd\OneDrive\Desktop\Ecommerce-App\JWTDemo\JWTDemo\obj\Debug\net8.0\ref\JWTDemo.dll
+C:\Users\minhd\OneDrive\Desktop\Ecommerce-App\JWTDemo\JWTDemo\obj\Debug\net8.0\JWTDemo.sourcelink.json

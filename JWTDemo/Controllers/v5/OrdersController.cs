@@ -67,7 +67,7 @@ namespace JWTDemo.Controllers.v5
 
         [MapToApiVersion(5)]
         [HttpPatch("{id}")]
-        [Authorize(Roles = "Manager")]
+        [Authorize]
         public async Task<IActionResult> UpdateStatusOrder(Guid id, OrderStatus orderStatus)
         {
             var order = await _unitOfWork.OrderRepository.GetById(id);

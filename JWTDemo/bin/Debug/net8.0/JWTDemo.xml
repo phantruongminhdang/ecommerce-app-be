@@ -408,11 +408,18 @@
             <param name="id"></param>
             <returns></returns>
         </member>
-        <member name="M:JWTDemo.Controllers.v5.ProductsController.GetProducts(System.Int32,System.Int32)">
+        <member name="M:JWTDemo.Controllers.v5.ProductsController.GetProducts(Domain.ViewModels.Product.FilterProductModel,System.Int32,System.Int32)">
             <summary>
             Get a list of Product
             </summary>
             <returns>A list of ProductDTO</returns>
+        </member>
+        <member name="M:JWTDemo.Controllers.v5.ProductsController.GetProductCustomer(System.Guid)">
+            <summary>
+            Get a specific Product
+            </summary>
+            <param name="id"></param>
+            <returns>A specific ProductDTO</returns>
         </member>
         <member name="M:JWTDemo.Controllers.v5.ProductsController.GetProduct(System.Guid)">
             <summary>

@@ -9,6 +9,9 @@ using JWTDemo.Services;
 using Microsoft.AspNetCore.Authorization;
 using Domain.ViewModels.Auth;
 using DataAccess.Interfaces;
+using System.Security.Claims;
+using Domain.ViewModels.User;
+using Microsoft.EntityFrameworkCore;
 
 namespace JWTDemo.Controllers.v5
 {
@@ -67,7 +70,7 @@ namespace JWTDemo.Controllers.v5
                 new ApplicationUser { UserName = request.Username, Fullname = request.Fullname, Email = request.Email, Role = request.Role },
                 request.Password!
             );
-            
+
             if (result.Succeeded)
             {
                 if (user == null)
@@ -199,6 +202,79 @@ namespace JWTDemo.Controllers.v5
             catch (Exception ex)
             {
                 return BadRequest(ex.Message);
+            }
+        }
+
+        [MapToApiVersion(5)]
+        [Authorize]
+        [HttpPut("Profile")]
+        public async Task<IActionResult> ChangeProfile([FromForm] UserRequestUpdateDTO userRequestUpdateDTO)
+        {
+            string userId = _claimService.GetCurrentUserId.ToString().ToLower();
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                throw new Exception("User Not Found!");
+            }
+            else
+            {
+                var temp = await _userManager.Users.Where(x => !x.Id.ToLower().Equals(user.Id.ToLower()) && x.UserName.ToLower().Equals(userRequestUpdateDTO.Username.ToLower())).FirstOrDefaultAsync();
+                if (temp != null)
+                    throw new Exception("Tên đăng nhập này đã được sử dụng!");
+                try
+                {
+                    user.UserName = userRequestUpdateDTO.Username;
+                    user.NormalizedUserName = userRequestUpdateDTO.Username.ToUpper();
+                    user.Fullname = userRequestUpdateDTO.Fullname;
+                    user.PhoneNumber = userRequestUpdateDTO.PhoneNumber;
+                    var result = await _userManager.UpdateAsync(user);
+                    if (result.Succeeded)
+                        return Ok("Thay đổi thông tin cá nhân thành công!");
+
+                    var errors = new List<string>();
+                    errors.AddRange(result.Errors.Select(x => x.Description));
+                    return BadRequest(errors);
+                }
+                catch (Exception ex)
+                {
+                    return BadRequest(ex.Message);
+                }
+            }
+        }
+
+        [MapToApiVersion(5)]
+        [HttpPost("ResetPassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO model)
+        {
+            string userId = _claimService.GetCurrentUserId.ToString().ToLower();
+            var user = await _userManager.FindByIdAsync(userId); 
+            if (user == null)
+            {
+                throw new Exception("Không tìm thấy tài khoản bạn yêu cầu!");
+            }
+            try
+            {
+                if (!model.NewPassword.Equals(model.ConfirmPassword))
+                {
+                    return BadRequest("Mật khẩu với và mật khẩu xác nhận không khớp!");
+                }
+                
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var result = await _userManager.ResetPasswordAsync(user, token, model.NewPassword);
+                if (result.Succeeded)
+                {
+                    // Mật khẩu đã được đặt lại thành công
+                    return Ok(new { msg = "Mật khẩu đã được đặt lại thành công! Vui lòng tiến hành đăng nhập!" });
+                }
+                else
+                {
+                    // Đặt lại mật khẩu không thành công
+                    return BadRequest("Không thể đặt lại mật khẩu!");
+                }
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
             }
         }
     }

@@ -6,6 +6,7 @@ using Domain.Entities;
 using Domain.ViewModels.Cart;
 using Domain.ViewModels.Order;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using System.Linq.Expressions;
@@ -21,13 +22,15 @@ namespace JWTDemo.Controllers.v5
         private readonly IMapper _mapper;
         private readonly IHubContext<ChatHub> _hubContext;
         private readonly IClaimsService _claimService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public CartsController(IUnitOfWork unitOfWork, IMapper mapper, IHubContext<ChatHub> hubContext, IClaimsService claimService)
+        public CartsController(IUnitOfWork unitOfWork, IMapper mapper, IHubContext<ChatHub> hubContext, IClaimsService claimService, UserManager<ApplicationUser> userManager)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _hubContext = hubContext;
             _claimService = claimService;
+            _userManager = userManager;
         }
 
         // get: api/Carts
@@ -56,15 +59,19 @@ namespace JWTDemo.Controllers.v5
         public async Task<ActionResult<CartResponseDTO>> AddToCart(CartItemRequestDTO cartItemRequestDTO)
         {
             var cart = await GetCartAsync();
+
             if(cart == null)
             {
                 return NotFound("Cart Not found.");
             }
+
             var product = await _unitOfWork.ProductRepository.GetById(cartItemRequestDTO.ProductId);
+
             if (product == null)
             {
                 return NotFound("Product Not found.");
             }
+
             var cartItem = _mapper.Map<CartItem>(cartItemRequestDTO);
             cartItem.CartId = cart.Id;
             var itemInCart = cart.CartItems.FirstOrDefault(i => i.ProductId == cartItem.ProductId);
@@ -79,7 +86,7 @@ namespace JWTDemo.Controllers.v5
             }
             if(product.Quantity < cartItem.Quantity)
             {
-                return BadRequest("Product is not enough!");
+                return BadRequest("Product is out of stock!");
             }
             product.Quantity -= cartItem.Quantity;
             try
@@ -104,11 +111,6 @@ namespace JWTDemo.Controllers.v5
         [Authorize(Roles = "Customer")]
         public async Task<ActionResult<CartResponseDTO>> RemoveToCart(Guid cartItemId)
         {
-            var cart = await GetCartAsync();
-            if (cart == null)
-            {
-                return NotFound("Cart Not found.");
-            }
             var cartItem = await _unitOfWork.CartItemRepository.GetById(cartItemId);
             if (cartItem == null)
             {
@@ -133,6 +135,7 @@ namespace JWTDemo.Controllers.v5
                 throw new Exception(ex.Message);
             }
 
+            var cart = await GetCartAsync();
             return CreatedAtAction(nameof(GetCart), new { id = cart.Id }, _mapper.Map<CartResponseDTO>(cart));
         }
 
@@ -181,7 +184,10 @@ namespace JWTDemo.Controllers.v5
                 _unitOfWork.RollbackTransaction();
                 throw new Exception(ex.Message);
             }
-            return Ok("Checkout successfully!");
+            var userId = _claimService.GetCurrentUserId.ToString();
+            var user = await _userManager.FindByIdAsync(userId);
+            await _hubContext.Clients.All.SendAsync("ReceiveNotification", userId, $"{user.Email} order successfully!");
+            return CreatedAtAction(nameof(GetCart), new { id = cart.Id }, _mapper.Map<CartResponseDTO>(cart));
         }
 
         private async Task<Cart> GetCartAsync()

@@ -8,6 +8,7 @@
 
   <ItemGroup>
 	  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+	  <PackageReference Include="SqlTableDependency" Version="8.5.8" />
 	  <ProjectReference Include="..\Domain\Domain.csproj" />
   </ItemGroup>
 
